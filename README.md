@@ -7,6 +7,9 @@ infrastructure for lambda functions, then removing the redundant parts, which
 is why Badlam code is so bloated and riddled with things very unnecessary for
 lambda calculus (such as `Class`, `Instance`, `BLError`, etc). Don't judge it.
 
+The name "Badlam" is an amalgam of lambda. The initial "ba" is also a
+reference to baba-lang, whose codebase Badlam is based on.
+
 
 ## How to install and use Badlam
 
@@ -35,3 +38,10 @@ pip install -r requirements.txt
 6. Run `src/main.py` without arguments to open an interactive prompt. To run
 a source file, enter `src/main.py <file>`. Source files are of extension
 `.blm`. Run `src/main.py -h` for further help.
+
+
+# To do list
+- Remove all the bloat
+- Add data types that normal functional languages like Scheme have (ints,
+linked lists, etc)
+- Rewrite in continuation-passing style
