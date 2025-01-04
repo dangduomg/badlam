@@ -1,0 +1,21 @@
+// lambda calculus
+
+?start: expr
+
+?expr: call
+
+?call: expr atom
+     | atom
+
+?atom: lambda
+     | IDENT -> var
+     | "(" expr ")" -> paren
+
+lambda: ("λ" | "\\") IDENT "." expr
+
+IDENT: CNAME
+
+%import common.CNAME
+%import common.WS
+
+%ignore WS
