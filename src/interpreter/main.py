@@ -28,9 +28,8 @@ class ASTInterpreter(ASTVisitor):
 
     # pylint: disable=too-few-public-methods
 
-    locals: Env | None = None
-
     calls: list[Call]
+    locals: Env | None = None
 
     def __init__(self):
         self.calls = []
