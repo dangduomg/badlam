@@ -20,7 +20,7 @@ from lark.tree import Meta
 
 from bl_parser import parse_to_ast
 from interpreter import (
-    ASTInterpreter, BLError, ExpressionResult, Result, Value
+    ASTInterpreter, BLError, ExpressionResult, Value
 )
 
 if importlib.util.find_spec('readline'):
@@ -50,7 +50,7 @@ default_interp = ASTInterpreter()
 
 def interpret(
     src: str, interpreter: ASTInterpreter = default_interp
-) -> Result:
+) -> ExpressionResult:
     """Interpret a script"""
     ast_ = parse_to_ast(src)
     return interpreter.visit(ast_)
