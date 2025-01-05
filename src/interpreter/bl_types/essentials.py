@@ -520,7 +520,7 @@ class Env:
         self.interpreter = interpreter
         self.parent = parent
 
-    def new_var(self, name: str, value: Value) -> None:
+    def new_var(self, name: str, value: Value) -> "Env":
         """Create a child environment with a new variable"""
         return Env(self.interpreter, self.vars | {name: Var(value)}, self)
 
