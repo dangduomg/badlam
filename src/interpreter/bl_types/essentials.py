@@ -79,7 +79,7 @@ class ExpressionResult(Result, ABC):
         meta: Meta | None, then: Callable,
     ) -> "ExpressionResult":
         """Call self as a function"""
-        return "running", then, self.call(args, interpreter, meta)
+        return "running", then, (self.call(args, interpreter, meta),)
 
     def new(
         self, args: list["Value"], interpreter: "ASTInterpreter",

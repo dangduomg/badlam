@@ -19,17 +19,13 @@ from .bl_types import (
 class ASTInterpreter(ASTVisitor):
     """AST interpreter"""
 
-    # pylint: disable=too-few-public-methods
-
     calls: list[Call]
-    locals: Env
 
     def __init__(self):
         self.calls = []
-        self.locals = Env(self)
 
     def visit(self, node: nodes._Expr) -> ExpressionResult:
-        tramp = self._visit(node, self.locals, lambda x: ("done", x))
+        tramp = self._visit(node, Env(self), lambda x: ("done", x))
         while True:
             match tramp:
                 case "running", f, args:
@@ -67,7 +63,7 @@ class ASTInterpreter(ASTVisitor):
     def apply(
         self, callee: ExpressionResult, arg: ExpressionResult,
         meta: Meta | None, then: Callable,
-    ) -> ExpressionResult:
+    ) -> tuple[Literal["running", "done"], Callable, Sequence]:
         """Apply a function"""
         match callee:
             case bl_types.BLFunction(form_arg=form_arg, body=body, env=env):
