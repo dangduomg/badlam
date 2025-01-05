@@ -9,9 +9,8 @@ from lark.tree import Meta
 from bl_parser import nodes
 from bl_parser.base import ASTVisitor
 
-from . import bl_types
 from .bl_types import (
-    ExpressionResult, BLError, Call, Env, cast_to_instance,
+    ExpressionResult, BLError, BLFunction, Call, Env, cast_to_instance,
     NotImplementedException,
 )
 
@@ -79,7 +78,7 @@ class ASTInterpreter(ASTVisitor):
             case nodes.Var(meta=meta, name=name):
                 return "running", then, (env.get_var(name, meta),)
             case nodes.Lambda(form_arg=form_arg, body=body):
-                return "running", then, (bl_types.BLFunction(
+                return "running", then, (BLFunction(
                     form_arg, body, env, str(node)
                 ),)
         return "running", then, (BLError(cast_to_instance(
@@ -109,7 +108,7 @@ class ASTInterpreter(ASTVisitor):
                 arguments for the next function.
         """
         match callee:
-            case bl_types.BLFunction(form_arg=form_arg, body=body, env=env):
+            case BLFunction(form_arg=form_arg, body=body, env=env):
                 return "running", self._visit, (
                     body, env.new_var(form_arg, arg), then
                 )
