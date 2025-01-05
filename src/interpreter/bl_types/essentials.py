@@ -111,7 +111,6 @@ class BLError(ExpressionResult):
 
     def __init__(self, value: "Instance", meta: Meta | None) -> None:
         self.value = value
-        self.value.vars["meta"] = PythonValue(meta)
         self.meta = meta
 
     @override
@@ -164,37 +163,6 @@ class Value(ExpressionResult):
         self, interpreter: "ASTInterpreter", meta: Meta | None
     ) -> "String | BLError":
         return String("<value>")
-
-
-@dataclass(frozen=True)
-class PythonValue(Value):
-    """Python value wrapper"""
-
-    value: object
-
-    @override
-    def dump(
-        self, interpreter: "ASTInterpreter", meta: Meta | None
-    ) -> "String":
-        return String(f"<python value {self.value!r}>")
-
-
-@dataclass(frozen=True)
-class Bool(Value):
-    """Boolean type"""
-
-    value: bool
-
-    @override
-    def dump(
-        self, interpreter: "ASTInterpreter", meta: Meta | None
-    ) -> "String":
-        if self.value:
-            return String("true")
-        return String("false")
-
-
-BOOLS = Bool(False), Bool(True)
 
 
 @dataclass(frozen=True)
@@ -265,10 +233,8 @@ class BLFunction(Value):
 
     form_arg: Token
     body: _Expr
-    env: "Env | None"
+    env: "Env"
     src: str
-    name: String = String("λ")
-    this: "Instance | None" = None
 
     @override
     def call(
@@ -277,62 +243,20 @@ class BLFunction(Value):
     ) -> ExpressionResult:
         return self.call_cps(args, interpreter, meta, lambda x: x)
 
-    def call1_cps(
-        self, arg: Value, interpreter: "ASTInterpreter",
-        meta: Meta | None,
-    ) -> ExpressionResult:
-        """Call using CPS with only 1 argument"""
-        return self.call([arg], interpreter, meta)
-
     @override
     def call_cps(
         self, args: list[Value], interpreter: "ASTInterpreter",
         meta: Meta | None, then: Callable,
     ):
         """Call using CPS"""
-        # Add the function to the "call stack"
-        interpreter.calls.append(Call(self, meta))
-        # Create an environment (call frame)
-        old_env = interpreter.locals
-        env = Env(interpreter, parent=self.env)
-        # Populate it with arguments
-        form_arg = self.form_arg
-        try:
-            env.new_var(form_arg, args[0])
-        except ValueError:
-            return "running", then, (BLError(cast_to_instance(
-                IncorrectTypeException.new([], interpreter, meta)
-            ), meta),)
-        # If function is bound to an object, add that object
-        if self.this is not None:
-            env.new_var("this", self.this)
-        # Run the body
-        interpreter.locals = env
-        res = interpreter.visit(self.body)
-        # Clean it up
-        interpreter.locals = old_env
-        # Return!
-        match res:
-            case Value():
-                interpreter.calls.pop()
-                return "running", then, (res,)
-            case BLError():
-                return "running", then, (res,)
-        return "running", then, (BLError(cast_to_instance(
-            NotImplementedException.new([], interpreter, meta)
-        ), meta),)
+        return interpreter.apply(self, args[0], meta, then)
 
     def bind(self, this: "Instance") -> "BLFunction":
         """Return a version of BLFunction bound to an object"""
-        return BLFunction(
-            self.form_arg, self.body, self.env, self.src, this
-        )
+        return self
 
     @override
     def dump(self, interpreter: "ASTInterpreter", meta: Meta | None) -> String:
-        if self.this is not None:
-            this_to_str = self.this.dump(interpreter, meta).value
-            return String(f"<method '{self.name}' bound to {this_to_str}>")
         return String(self.src)
 
 
@@ -385,19 +309,6 @@ ObjectClass = Class(String("Object"))
 # Base class for all exceptions
 
 
-def exc_init(
-    meta: Meta | None, interpreter: "ASTInterpreter", this: "Instance | None",
-    /, msg: String, *_
-) -> Null | BLError:
-    """Initialize an exception"""
-    if this is not None:
-        this.vars["msg"] = msg
-        return NULL
-    return BLError(cast_to_instance(
-        NotImplementedException.new([], interpreter, meta)
-    ), meta)
-
-
 def exc_dump(
     meta: Meta | None, interpreter: "ASTInterpreter", this: "Instance | None",
     /, *_
@@ -411,13 +322,10 @@ def exc_dump(
 
 
 exc_methods: dict[str, Value] = {
-    "__init__": PythonFunction(exc_init),
     "__dump__": PythonFunction(exc_dump),
 }
 
 ExceptionClass = Class(String("Exception"), ObjectClass, exc_methods)
-
-# Exceptions
 NotImplementedException = Class(
     String("NotImplementedException"), ExceptionClass
 )
@@ -510,13 +418,10 @@ class Env:
     parent: "Env | None"
 
     def __init__(
-        self, interpreter: "ASTInterpreter",
-        vars_: dict[str, Var] | None = None, parent: "Env | None" = None,
+        self, interpreter: "ASTInterpreter", vars_: dict[str, Var],
+        parent: "Env | None" = None,
     ):
-        if vars_ is None:
-            self.vars = {}
-        else:
-            self.vars = vars_
+        self.vars = vars_
         self.interpreter = interpreter
         self.parent = parent
 
