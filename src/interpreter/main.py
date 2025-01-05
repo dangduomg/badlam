@@ -1,8 +1,8 @@
 """AST interpreter"""
 
 
-from dataclasses import dataclass
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from typing import Literal
 
 from lark.tree import Meta
 
@@ -14,14 +14,6 @@ from .bl_types import (
     ExpressionResult, BLError, Call, Env, cast_to_instance,
     NotImplementedException,
 )
-
-
-@dataclass(frozen=True)
-class ASTContinuation:
-    """AST continuation"""
-    node: nodes._Expr
-    env: Env
-    meta: Meta
 
 
 class ASTInterpreter(ASTVisitor):
@@ -37,34 +29,50 @@ class ASTInterpreter(ASTVisitor):
         self.locals = Env(self)
 
     def visit(self, node: nodes._Expr) -> ExpressionResult:
-        res = self._visit(node, lambda x: x)
-        while callable(res):
-            res = res()
-        return res
+        tramp = self._visit(node, self.locals, lambda x: ("done", x))
+        while True:
+            match tramp:
+                case "running", f, args:
+                    tramp = f(*args)
+                case "done", res:
+                    return res
 
     def _visit(
-        self, node: nodes._Expr, then: Callable
-    ) -> ExpressionResult:
+        self, node: nodes._Expr, env: Env, then: Callable
+    ) -> tuple[Literal["running", "done"], Callable, Sequence]:
+        """Uses trampolines"""
         match node:
             case nodes.Paren(expr=expr):
-                return lambda: self._visit(expr, then)
+                return "running", self._visit, (expr, env, then)
             case nodes.Call(meta=meta, callee=callee, arg=arg):
-                return lambda: self._visit(
-                    callee,
-                    lambda callee: (
-                        self._visit(
-                            arg,
-                            lambda arg: callee.call1_cps(arg, self, meta, then)
+                return "running", self._visit, (callee, env, lambda callee: (
+                    self._visit(
+                        arg,
+                        env,
+                        lambda arg: (
+                            self.apply(callee, arg, meta, then)
                         )
                     )
-                )
+                ))
             case nodes.Var(meta=meta, name=name):
-                return lambda: then(self.locals.get_var(name, meta))
+                return "running", then, (env.get_var(name, meta),)
             case nodes.Lambda(form_arg=form_arg, body=body):
-                env = self.locals.copy()
-                return lambda: then(
-                    bl_types.BLFunction(form_arg, body, env, str(node))
-                )
-        return lambda: then(BLError(cast_to_instance(
+                return "running", then, (bl_types.BLFunction(
+                    form_arg, body, env, str(node)
+                ),)
+        return "running", then, (BLError(cast_to_instance(
             NotImplementedException.new([], self, node.meta)
-        ), node.meta))
+        ), node.meta),)
+
+    def apply(
+        self, callee: ExpressionResult, arg: ExpressionResult,
+        meta: Meta | None, then: Callable,
+    ) -> ExpressionResult:
+        """Apply a function"""
+        match callee:
+            case bl_types.BLFunction(form_arg=form_arg, body=body, env=env):
+                return "running", self._visit, (
+                    body, env.new_var(form_arg, arg), then
+                )
+            case _:
+                return callee.call_cps([arg], self, meta, then)
