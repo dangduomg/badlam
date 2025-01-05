@@ -25,7 +25,7 @@ class ASTInterpreter(ASTVisitor):
         self.calls = []
 
     def visit(self, node: nodes._Expr) -> ExpressionResult:
-        tramp = self._visit(node, Env(self, {}), lambda x: ("done", x))
+        tramp = self._visit(node, None, lambda x: ("done", x))
         while True:
             match tramp:
                 case "running", f, args:

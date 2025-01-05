@@ -253,7 +253,7 @@ class BLFunction(Value):
 
     form_arg: Token
     body: _Expr
-    env: "Env"
+    env: Env | None
     src: str
 
     @override
