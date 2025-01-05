@@ -1,17 +1,35 @@
 // lambda calculus
 
-?start: expr
+?start: exprft
 
-?expr: call
+?exprtt: atomt
+       | paren{call}
 
-?call: expr atom
-     | atom
+?exprtf: atomf
+       | paren{call}
 
-?atom: lambda
-     | IDENT -> var
-     | "(" expr ")" -> paren
+?exprft: atomt
+       | call
 
-lambda: ("λ" | "\\") IDENT "." expr
+?exprff: atomf
+       | call
+
+?atomt: _lambda
+      | paren{exprft}
+      | IDENT -> var
+
+?atomf: paren{_lambda}
+      | paren{exprft}
+      | IDENT -> var
+
+_lambda: ("λ" | "\\") lambda
+
+call: exprff exprtt
+
+lambda: IDENT lambda
+      | IDENT "." exprft
+
+paren{e}: "(" e ")"
 
 IDENT: CNAME
 
