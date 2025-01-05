@@ -210,20 +210,22 @@ class Env:
     """Interpreter environment"""
 
     interpreter: "ASTInterpreter"
-    vars: dict[str, Var]
+    name: str
+    var: Var
     parent: "Env | None"
 
     def __init__(
-        self, interpreter: "ASTInterpreter", vars_: dict[str, Var],
+        self, interpreter: "ASTInterpreter", name: str, value: Value,
         parent: "Env | None" = None,
     ):
-        self.vars = vars_
+        self.name = name
+        self.var = Var(value)
         self.interpreter = interpreter
         self.parent = parent
 
     def new_var(self, name: str, value: Value) -> "Env":
         """Create a child environment with a new variable"""
-        return Env(self.interpreter, {name: Var(value)}, self)
+        return Env(self.interpreter, name, value, self)
 
     def get_var(self, name: str, meta: Meta | None) -> ExpressionResult:
         """Retrieve the value of a variable"""
@@ -236,8 +238,8 @@ class Env:
 
     def resolve_var(self, name: str, meta: Meta | None) -> Var | BLError:
         """Resolve a variable name"""
-        if name in self.vars:
-            return self.vars[name]
+        if name in self.name:
+            return self.var
         if self.parent is not None:
             return self.parent.resolve_var(name, meta)
         return BLError(cast_to_instance(
