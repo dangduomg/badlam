@@ -1,7 +1,10 @@
-"""baba-lang
+"""Badlam
 
-Yet another programming language, made in Python. Has nothing to do with the
-video game "Baba is You".
+Badlam is a lambda calculus implementation made by basically stealing code
+from [baba-lang](https://github.com/dangduomg/baba-lang), which already has
+infrastructure for lambda functions, then removing the redundant parts, which
+is why Badlam code is so bloated and riddled with things very unnecessary for
+lambda calculus (such as `Class`, `Instance`, `BLError`, etc). Don't judge it.
 """
 
 

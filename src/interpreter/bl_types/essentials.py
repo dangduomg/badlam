@@ -4,6 +4,7 @@
 from abc import ABC
 from typing import Self, TYPE_CHECKING, override, cast
 from dataclasses import dataclass, field
+from collections.abc import Callable
 
 from lark import Token
 from lark.tree import Meta
@@ -260,6 +261,20 @@ class BLFunction(Value):
         self, args: list[Value], interpreter: "ASTInterpreter",
         meta: Meta | None
     ) -> ExpressionResult:
+        return self.call_cps(args, interpreter, meta, lambda x: x)
+
+    def call1_cps(
+        self, arg: Value, interpreter: "ASTInterpreter",
+        meta: Meta | None,
+    ) -> ExpressionResult:
+        """Call using CPS with only 1 argument"""
+        return self.call([arg], interpreter, meta)
+
+    def call_cps(
+        self, args: list[Value], interpreter: "ASTInterpreter",
+        meta: Meta | None, then: Callable,
+    ):
+        """Call using CPS"""
         # Add the function to the "call stack"
         interpreter.calls.append(Call(self, meta))
         # Create an environment (call frame)
@@ -285,12 +300,12 @@ class BLFunction(Value):
         match res:
             case Value():
                 interpreter.calls.pop()
-                return res
+                return lambda: then(res)
             case BLError():
-                return res
-        return BLError(cast_to_instance(
+                return lambda: then(res)
+        return lambda: then(BLError(cast_to_instance(
             NotImplementedException.new([], interpreter, meta)
-        ), meta)
+        ), meta))
 
     def bind(self, this: "Instance") -> "BLFunction":
         """Return a version of BLFunction bound to an object"""
