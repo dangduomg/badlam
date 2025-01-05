@@ -522,7 +522,7 @@ class Env:
 
     def new_var(self, name: str, value: Value) -> "Env":
         """Create a child environment with a new variable"""
-        return Env(self.interpreter, self.vars | {name: Var(value)}, self)
+        return Env(self.interpreter, {name: Var(value)}, self)
 
     def get_var(self, name: str, meta: Meta | None) -> ExpressionResult:
         """Retrieve the value of a variable"""
