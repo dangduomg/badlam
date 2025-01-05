@@ -25,6 +25,19 @@ class ASTInterpreter(ASTVisitor):
         self.calls = []
 
     def visit(self, node: nodes._Expr) -> ExpressionResult:
+        """
+        Visits a node in the abstract syntax tree (AST) and processes it.
+
+        This method uses a trampoline to handle recursive calls in a loop to
+        avoid Python's recursion limit. It processes the given node and
+        returns the result.
+
+        Args:
+            node (nodes._Expr): The node to visit in the AST.
+
+        Returns:
+            ExpressionResult: The result of processing the node.
+        """
         tramp = self._visit(node, None, lambda x: ("done", x))
         while True:
             match tramp:
@@ -36,7 +49,22 @@ class ASTInterpreter(ASTVisitor):
     def _visit(
         self, node: nodes._Expr, env: Env, then: Callable
     ) -> tuple[Literal["running", "done"], Callable, Sequence]:
-        """Uses trampolines"""
+        """
+        Visits a node in the abstract syntax tree (AST) and processes it using
+        trampolines.
+
+        Arguments:
+            node (nodes._Expr): The AST node to visit.
+            env (Env): The environment in which the node is evaluated.
+            then (Callable): The continuation function to call after
+                             processing the node.
+        Returns:
+            tuple[Literal["running", "done"], Callable, Sequence]:
+                A tuple containing:
+                - A status string ("running" or "done").
+                - A callable function to continue processing.
+                - A sequence of arguments for the next call.
+        """
         match node:
             case nodes.Paren(expr=expr):
                 return "running", self._visit, (expr, env, then)
@@ -62,7 +90,24 @@ class ASTInterpreter(ASTVisitor):
         self, callee: ExpressionResult, arg: ExpressionResult,
         meta: Meta | None, then: Callable,
     ) -> tuple[Literal["running", "done"], Callable, Sequence]:
-        """Apply a function"""
+        """
+        Applies a function or callable to an argument in a
+        continuation-passing style (CPS).
+
+        Arguments:
+            callee (ExpressionResult): The function or callable to be applied.
+            arg (ExpressionResult): The argument to be passed to the function
+                                    or callable.
+            meta (Meta | None): Optional metadata for the application.
+            then (Callable): The continuation function to be called after the
+                             application.
+
+        Returns:
+            tuple[Literal["running", "done"], Callable, Sequence]:
+                A tuple indicating the state of the application ("running" or
+                "done"), the next function to be called, and a sequence of
+                arguments for the next function.
+        """
         match callee:
             case bl_types.BLFunction(form_arg=form_arg, body=body, env=env):
                 return "running", self._visit, (
