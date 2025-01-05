@@ -317,10 +317,6 @@ class Class(Value):
                     return res
         return inst
 
-    @override
-    def dump(self, interpreter: "ASTInterpreter", meta: Meta | None) -> String:
-        return String(f"<class {self.name.value}>")
-
 
 # Base class for all objects
 ObjectClass = Class(String("Object"))
@@ -360,8 +356,6 @@ IncorrectTypeException = Class(
 class Instance(Value):
     """baba-lang instance"""
 
-    # pylint: disable=too-many-public-methods
-
     class_: Class
     vars: dict[str, Value]
 
@@ -374,19 +368,21 @@ class Instance(Value):
         self, attr: str, interpreter: "ASTInterpreter", meta: Meta | None
     ) -> ExpressionResult:
         try:
-            return self.vars[attr]
+            res = self.vars[attr]
         except KeyError:
-            match res := self.class_.get_attr(attr, interpreter, meta):
-                case SupportsBLCall():
-                    return res.bind(self)
-                case _:
-                    return res
+            res = self.class_.get_attr(attr, interpreter, meta)
+        match res:
+            case SupportsBLCall():
+                return res.bind(self)
+        return res
 
     @override
     def dump(
         self, interpreter: "ASTInterpreter", meta: Meta | None
     ) -> String | BLError:
-        res = self._call_method_if_exists("__dump__", [], interpreter, meta)
+        res = self.get_attr("__dump__", interpreter, meta).call(
+            [], interpreter, meta
+        )
         if not isinstance(res, String):
             if isinstance(res, BLError):
                 if res.value.class_ == AttrNotFoundException:
@@ -396,13 +392,4 @@ class Instance(Value):
             return BLError(cast_to_instance(
                 IncorrectTypeException.new([], interpreter, meta)
             ), meta)
-        return res
-
-    def _call_method_if_exists(
-        self, name: str, args: list[Value], interpreter: "ASTInterpreter",
-        meta: Meta | None
-    ) -> ExpressionResult:
-        match res := self.get_attr(name, interpreter, meta):
-            case SupportsBLCall():
-                return res.bind(self).call(args, interpreter, meta)
         return res
