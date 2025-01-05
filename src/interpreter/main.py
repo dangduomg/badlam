@@ -25,7 +25,7 @@ class ASTInterpreter(ASTVisitor):
         self.calls = []
 
     def visit(self, node: nodes._Expr) -> ExpressionResult:
-        tramp = self._visit(node, Env(self), lambda x: ("done", x))
+        tramp = self._visit(node, Env(self, {}), lambda x: ("done", x))
         while True:
             match tramp:
                 case "running", f, args:
@@ -41,15 +41,13 @@ class ASTInterpreter(ASTVisitor):
             case nodes.Paren(expr=expr):
                 return "running", self._visit, (expr, env, then)
             case nodes.Call(meta=meta, callee=callee, arg=arg):
-                return "running", self._visit, (callee, env, lambda callee: (
-                    self._visit(
-                        arg,
-                        env,
-                        lambda arg: (
+                return "running", self._visit, (
+                    callee, env, lambda callee: (
+                        self._visit(arg, env, lambda arg: (
                             self.apply(callee, arg, meta, then)
-                        )
+                        ))
                     )
-                ))
+                )
             case nodes.Var(meta=meta, name=name):
                 return "running", then, (env.get_var(name, meta),)
             case nodes.Lambda(form_arg=form_arg, body=body):
