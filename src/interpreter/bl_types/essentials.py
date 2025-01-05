@@ -542,7 +542,3 @@ class Env:
         return BLError(cast_to_instance(
             VarNotFoundException.new([], self.interpreter, meta)
         ), meta)
-
-    def copy(self) -> "Env":
-        """Copy the environment (for capturing variables in closures)"""
-        return Env(self.interpreter, self.vars.copy(), self.parent)
