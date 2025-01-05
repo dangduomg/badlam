@@ -74,6 +74,13 @@ class ExpressionResult(Result, ABC):
             NotImplementedException.new([], interpreter, meta)
         ), meta)
 
+    def call_cps(
+        self, args: list["Value"], interpreter: "ASTInterpreter",
+        meta: Meta | None, then: Callable,
+    ) -> "ExpressionResult":
+        """Call self as a function"""
+        return "running", then, self.call(args, interpreter, meta)
+
     def new(
         self, args: list["Value"], interpreter: "ASTInterpreter",
         meta: Meta | None
@@ -124,6 +131,13 @@ class BLError(Exit, ExpressionResult):
     def call(
         self, args: list["Value"], interpreter: "ASTInterpreter",
         meta: Meta | None
+    ) -> Self:
+        return self
+
+    @override
+    def call_cps(
+        self, args: list["Value"], interpreter: "ASTInterpreter",
+        meta: Meta | None, then: Callable,
     ) -> Self:
         return self
 
@@ -270,6 +284,7 @@ class BLFunction(Value):
         """Call using CPS with only 1 argument"""
         return self.call([arg], interpreter, meta)
 
+    @override
     def call_cps(
         self, args: list[Value], interpreter: "ASTInterpreter",
         meta: Meta | None, then: Callable,
@@ -285,9 +300,9 @@ class BLFunction(Value):
         try:
             env.new_var(form_arg, args[0])
         except ValueError:
-            return BLError(cast_to_instance(
+            return "running", then, (BLError(cast_to_instance(
                 IncorrectTypeException.new([], interpreter, meta)
-            ), meta)
+            ), meta),)
         # If function is bound to an object, add that object
         if self.this is not None:
             env.new_var("this", self.this)
@@ -300,12 +315,12 @@ class BLFunction(Value):
         match res:
             case Value():
                 interpreter.calls.pop()
-                return lambda: then(res)
+                return "running", then, (res,)
             case BLError():
-                return lambda: then(res)
-        return lambda: then(BLError(cast_to_instance(
+                return "running", then, (res,)
+        return "running", then, (BLError(cast_to_instance(
             NotImplementedException.new([], interpreter, meta)
-        ), meta))
+        ), meta),)
 
     def bind(self, this: "Instance") -> "BLFunction":
         """Return a version of BLFunction bound to an object"""
@@ -506,8 +521,8 @@ class Env:
         self.parent = parent
 
     def new_var(self, name: str, value: Value) -> None:
-        """Set a new/existing variable"""
-        self.vars[name] = Var(value)
+        """Create a child environment with a new variable"""
+        return Env(self.interpreter, self.vars | {name: Var(value)}, self)
 
     def get_var(self, name: str, meta: Meta | None) -> ExpressionResult:
         """Retrieve the value of a variable"""
