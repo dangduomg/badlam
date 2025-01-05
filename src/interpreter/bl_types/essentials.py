@@ -38,18 +38,6 @@ def cast_to_instance(value: "ExpressionResult") -> "Instance":
 class ExpressionResult(ABC):
     """Expression result base class"""
 
-    def _unimplemented_binary_op(
-        self, other: "ExpressionResult", interpreter: "ASTInterpreter",
-        meta: Meta | None,
-    ) -> "BLError":
-        """Unimplemented binary operation stub"""
-        match other:
-            case BLError():
-                return other
-        return BLError(cast_to_instance(
-            NotImplementedException.new([], interpreter, meta)
-        ), meta)
-
     def get_attr(
         self, attr: str, interpreter: "ASTInterpreter", meta: Meta | None
     ) -> "ExpressionResult":
@@ -95,16 +83,12 @@ class ExpressionResult(ABC):
 # section Error
 
 
-@dataclass(init=False)
+@dataclass
 class BLError(ExpressionResult):
     """Error result type"""
 
     value: "Instance"
     meta: Meta | None = None
-
-    def __init__(self, value: "Instance", meta: Meta | None) -> None:
-        self.value = value
-        self.meta = meta
 
     @override
     def get_attr(
