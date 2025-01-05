@@ -58,13 +58,6 @@ class ExpressionResult(ABC):
             NotImplementedException.new([], interpreter, meta)
         ), meta)
 
-    def set_attr(
-        self, attr: str, value: "ExpressionResult",
-        interpreter: "ASTInterpreter", meta: Meta | None
-    ) -> "ExpressionResult":
-        """Set an attribute"""
-        return self._unimplemented_binary_op(value, interpreter, meta)
-
     def call(
         self, args: list["Value"], interpreter: "ASTInterpreter",
         meta: Meta | None
@@ -116,13 +109,6 @@ class BLError(ExpressionResult):
     @override
     def get_attr(
         self, attr: str, interpreter: "ASTInterpreter", meta: Meta | None
-    ) -> Self:
-        return self
-
-    @override
-    def set_attr(
-        self, attr: str, value: ExpressionResult,
-        interpreter: "ASTInterpreter", meta: Meta | None,
     ) -> Self:
         return self
 
@@ -225,6 +211,54 @@ class PythonFunction(Value):
         self, interpreter: "ASTInterpreter", meta: Meta | None
     ) -> String:
         return String(f"<python function {self.function!r}>")
+
+
+# section Lambda calculus
+
+
+@dataclass(frozen=True)
+class Var:
+    """Interpreter immutable binding"""
+    value: Value
+
+
+class Env:
+    """Interpreter environment"""
+
+    interpreter: "ASTInterpreter"
+    vars: dict[str, Var]
+    parent: "Env | None"
+
+    def __init__(
+        self, interpreter: "ASTInterpreter", vars_: dict[str, Var],
+        parent: "Env | None" = None,
+    ):
+        self.vars = vars_
+        self.interpreter = interpreter
+        self.parent = parent
+
+    def new_var(self, name: str, value: Value) -> "Env":
+        """Create a child environment with a new variable"""
+        return Env(self.interpreter, {name: Var(value)}, self)
+
+    def get_var(self, name: str, meta: Meta | None) -> ExpressionResult:
+        """Retrieve the value of a variable"""
+        resolve_result = self.resolve_var(name, meta)
+        match resolve_result:
+            case Var(value=value):
+                return value
+            case BLError():
+                return resolve_result
+
+    def resolve_var(self, name: str, meta: Meta | None) -> Var | BLError:
+        """Resolve a variable name"""
+        if name in self.vars:
+            return self.vars[name]
+        if self.parent is not None:
+            return self.parent.resolve_var(name, meta)
+        return BLError(cast_to_instance(
+            VarNotFoundException.new([], self.interpreter, meta)
+        ), meta)
 
 
 @dataclass
@@ -363,19 +397,6 @@ class Instance(Value):
                     return res
 
     @override
-    def set_attr(
-        self, attr: str, value: ExpressionResult,
-        interpreter: "ASTInterpreter", meta: Meta | None,
-    ) -> ExpressionResult:
-        match value:
-            case BLError():
-                return value
-            case Value():
-                self.vars[attr] = value
-                return value
-        return super().set_attr(attr, value, interpreter, meta)
-
-    @override
     def dump(
         self, interpreter: "ASTInterpreter", meta: Meta | None
     ) -> String | BLError:
@@ -399,51 +420,3 @@ class Instance(Value):
             case SupportsBLCall():
                 return res.bind(self).call(args, interpreter, meta)
         return res
-
-
-# section Environment
-
-
-@dataclass(frozen=True)
-class Var:
-    """Interpreter immutable binding"""
-    value: Value
-
-
-class Env:
-    """Interpreter environment"""
-
-    interpreter: "ASTInterpreter"
-    vars: dict[str, Var]
-    parent: "Env | None"
-
-    def __init__(
-        self, interpreter: "ASTInterpreter", vars_: dict[str, Var],
-        parent: "Env | None" = None,
-    ):
-        self.vars = vars_
-        self.interpreter = interpreter
-        self.parent = parent
-
-    def new_var(self, name: str, value: Value) -> "Env":
-        """Create a child environment with a new variable"""
-        return Env(self.interpreter, {name: Var(value)}, self)
-
-    def get_var(self, name: str, meta: Meta | None) -> ExpressionResult:
-        """Retrieve the value of a variable"""
-        resolve_result = self.resolve_var(name, meta)
-        match resolve_result:
-            case Var(value=value):
-                return value
-            case BLError():
-                return resolve_result
-
-    def resolve_var(self, name: str, meta: Meta | None) -> Var | BLError:
-        """Resolve a variable name"""
-        if name in self.vars:
-            return self.vars[name]
-        if self.parent is not None:
-            return self.parent.resolve_var(name, meta)
-        return BLError(cast_to_instance(
-            VarNotFoundException.new([], self.interpreter, meta)
-        ), meta)
