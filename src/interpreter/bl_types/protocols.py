@@ -1,7 +1,7 @@
 """Useful ABCs and protocols for the interpreter"""
 
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Protocol, TYPE_CHECKING, runtime_checkable
 
 from lark.tree import Meta
@@ -12,14 +12,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-few-public-methods
-
-
-class Result(ABC):
-    """Interpreter result base class"""
-
-
-class Exit(Result, ABC):
-    """Object signaling early exit"""
 
 
 @runtime_checkable

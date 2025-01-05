@@ -11,8 +11,8 @@ from lark.tree import Meta
 
 from bl_parser.nodes import _Expr
 
-from .abc_protocols import (
-    Result, Exit, SupportsBLCall, SupportsWrappedByPythonFunction
+from .protocols import (
+    SupportsBLCall, SupportsWrappedByPythonFunction
 )
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ def cast_to_instance(value: "ExpressionResult") -> "Instance":
 # section Result
 
 
-class ExpressionResult(Result, ABC):
+class ExpressionResult(ABC):
     """Expression result base class"""
 
     def _unimplemented_binary_op(
@@ -103,7 +103,7 @@ class ExpressionResult(Result, ABC):
 
 
 @dataclass(init=False)
-class BLError(Exit, ExpressionResult):
+class BLError(ExpressionResult):
     """Error result type"""
 
     value: "Instance"
